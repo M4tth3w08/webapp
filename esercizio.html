@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Giorno {{ giorno }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <button onclick="location.href='/'">🔙 Torna al calendario</button>
+
+  <h2>Giorno {{ giorno }}</h2>
+
+  {% if esercizi %}
+    <div class="esercizi-lista">
+      {% for esercizio in esercizi %}
+        <div class="esercizio-voce">
+          <strong>{{ esercizio.nome }}</strong><br>
+          <small>Serie: {{ esercizio.serie }} | Ripetizioni: {{ esercizio.ripetizioni }}</small><br>
+          {% if esercizio.note %}
+            <small>Note: {{ esercizio.note }}</small><br>
+          {% endif %}
+          <form method="POST" style="margin-top: 5px;">
+            <input type="hidden" name="delete_index" value="{{ loop.index0 }}">
+            <button type="submit" style="background-color:#c62828;">🗑 Elimina</button>
+          </form>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>Nessun esercizio salvato. Inseriscine uno qui sotto.</p>
+  {% endif %}
+
+  <form method="POST" class="form-esercizio">
+    <label>Nome Esercizio:</label>
+    <input type="text" name="nome" required>
+
+    <div class="row">
+      <div class="col">
+        <label>Serie:</label>
+        <input type="number" name="serie" min="1" required>
+      </div>
+      <div class="col">
+        <label>Ripetizioni:</label>
+        <input type="number" name="ripetizioni" min="1" required>
+      </div>
+    </div>
+
+    <label>Note:</label>
+    <textarea name="note" rows="2" placeholder="Note opzionali..."></textarea>
+
+    <button type="submit">➕ Aggiungi esercizio</button>
+  </form>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BodyEnergym</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <meta name="theme-color" content="#50b5ff">
+
+  <script>
+    let clickTimer;
+    function handleClick(event, data) {
+      clearTimeout(clickTimer);
+      clickTimer = setTimeout(function() {
+        document.getElementById('selected_date').value = data;
+        document.getElementById('date_form').submit();
+      }, 250);
+    }
+
+    function handleDoubleClick(event, data) {
+      clearTimeout(clickTimer);
+      window.location.href = '/giorno/' + data;
+    }
+  </script>
+</head>
+<body>
+
+  <h1 class="home-title">BODYENERGYM</h1>
+
+  <h1>{{ mese_nome }} {{ anno }}</h1>
+
+  <div class="month-nav centered-nav">
+    <a href="{{ url_for('index', anno=anno_prec, mese=mese_prec) }}">&laquo; Mese precedente</a>
+    {% if not (mese_corrente == mese and anno_corrente == anno) %}
+      <a href="{{ url_for('index', anno=anno_corrente, mese=mese_corrente) }}" class="oggi-button">
+        Torna a oggi
+      </a>
+    {% endif %}
+    <a href="{{ url_for('index', anno=anno_succ, mese=mese_succ) }}">Mese successivo &raquo;</a>
+  </div>
+
+  <div class="calendar">
+    {% for giorno in range(1, giorni + 1) %}
+      {% set data = anno ~ '-' ~ '%02d' % mese ~ '-' ~ '%02d' % giorno %}
+      <div class="day
+                  {% if giorno_corrente == giorno and mese_corrente == mese and anno_corrente == anno %} today {% endif %}
+                  {% if data in esercizi %} filled {% endif %}"
+           onclick="handleClick(event, '{{ data }}')"
+           ondblclick="handleDoubleClick(event, '{{ data }}')">
+        {{ giorno }}
+      </div>
+    {% endfor %}
+  </div>
+
+  <form id="date_form" method="POST" style="display:none;">
+    <input type="hidden" id="selected_date" name="selected_date">
+  </form>
+
+  {% if selected_data %}
+    <h2>Esercizi per il {{ selected_data }}</h2>
+    {% if esercizi_selezionati %}
+      <ul>
+        {% for esercizio in esercizi_selezionati %}
+          <li>
+            <strong>{{ esercizio.nome }}</strong> - Serie: {{ esercizio.serie }}, Ripetizioni: {{ esercizio.ripetizioni }}<br>
+            Note: {{ esercizio.note }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>Nessun esercizio salvato per questo giorno.</p>
+    {% endif %}
+  {% endif %}
+
+  <h2>Timer</h2>
+  <div class="row">
+    <div class="col">
+      <label>Minuti:</label>
+      <select id="minuti" class="scroll-select">
+        {% for i in range(0, 61) %}
+          <option value="{{ i }}">{{ i }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col">
+      <label>Secondi:</label>
+      <select id="secondi" class="scroll-select">
+        {% for i in range(0, 60) %}
+          <option value="{{ i }}">{{ i }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="timer-container">
+    <svg class="timer-circle" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="45" class="bg" />
+      <circle cx="50" cy="50" r="45" class="progress" id="progressCircle"/>
+      <text x="50" y="55" text-anchor="middle" class="timer-text" id="timer">00:00.000</text>
+    </svg>
+  </div>
+
+  <div class="timer-buttons">
+    <button type="button" id="startBtn" onclick="startTimer()">Avvia</button>
+    <button type="button" id="pauseBtn" onclick="pauseTimer()" style="display:none;">Pausa</button>
+    <button type="button" id="resumeBtn" onclick="resumeTimer()" style="display:none;">Riprendi</button>
+    <button type="button" id="resetBtn" onclick="resetTimer()" style="display:none;">Reset</button>
+  </div>
+
+  <script>
+    let timer, startTime, remaining = 0, duration = 0;
+
+    function format(ms) {
+      let totalSec = Math.floor(ms / 1000);
+      let min = String(Math.floor(totalSec / 60)).padStart(2, '0');
+      let sec = String(totalSec % 60).padStart(2, '0');
+      let milli = String(ms % 1000).padStart(3, '0');
+      return `${min}:${sec}.${milli}`;
+    }
+
+    function updateDisplay(ms) {
+      const percent = duration ? (ms / duration) : 0;
+      const circle = document.getElementById("progressCircle");
+      const offset = 282.6 * (1 - percent);
+      circle.style.strokeDashoffset = offset;
+      document.getElementById('timer').textContent = format(ms);
+    }
+
+    function startTimer() {
+      const min = parseInt(document.getElementById("minuti").value);
+      const sec = parseInt(document.getElementById("secondi").value);
+      remaining = (min * 60 + sec) * 1000;
+      duration = remaining;
+
+      document.getElementById("startBtn").style.display = "none";
+      document.getElementById("pauseBtn").style.display = "inline";
+      document.getElementById("resetBtn").style.display = "inline";
+
+      startTime = Date.now();
+      timer = setInterval(() => {
+        const now = Date.now();
+        const elapsed = now - startTime;
+        const timeLeft = remaining - elapsed;
+
+        if (timeLeft <= 0) {
+          updateDisplay(0);
+          clearInterval(timer);
+        } else {
+          updateDisplay(timeLeft);
+        }
+      }, 50);
+    }
+
+    function pauseTimer() {
+      clearInterval(timer);
+      remaining = remaining - (Date.now() - startTime);
+      document.getElementById("pauseBtn").style.display = "none";
+      document.getElementById("resumeBtn").style.display = "inline";
+    }
+
+    function resumeTimer() {
+      startTime = Date.now();
+      timer = setInterval(() => {
+        const now = Date.now();
+        const elapsed = now - startTime;
+        const timeLeft = remaining - elapsed;
+
+        if (timeLeft <= 0) {
+          updateDisplay(0);
+          clearInterval(timer);
+        } else {
+          updateDisplay(timeLeft);
+        }
+      }, 50);
+      document.getElementById("resumeBtn").style.display = "none";
+      document.getElementById("pauseBtn").style.display = "inline";
+    }
+
+    function resetTimer() {
+      clearInterval(timer);
+      document.getElementById("startBtn").style.display = "inline";
+      document.getElementById("pauseBtn").style.display = "none";
+      document.getElementById("resumeBtn").style.display = "none";
+      document.getElementById("resetBtn").style.display = "none";
+      updateDisplay(0);
+    }
+
+    window.onload = () => {
+      updateDisplay(0);
+    };
+  </script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/service-worker.js')
+      .then(reg => console.log('Service Worker registrato.', reg))
+      .catch(err => console.log('Errore nel registrare Service Worker:', err));
+  }
+</script>
+
+</body>
+</html>
